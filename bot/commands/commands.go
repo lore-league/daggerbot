@@ -6,6 +6,8 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
+var Commands = map[string]Command{}
+
 type Command struct {
 	Name        string   // Name of the command
 	Description string   // Description of the command
@@ -15,12 +17,4 @@ type Command struct {
 
 func (c Command) String() string {
 	return fmt.Sprintf("%s: %s", c.Name, c.Description)
-}
-
-var Commands = map[string]Command{
-	"ping": {
-		Name:        "Ping",
-		Description: "Replies with Pong!",
-		Handler:     Ping,
-	},
 }

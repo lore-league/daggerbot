@@ -6,6 +6,7 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/nerdwerx/daggerbot/bot"
+	"github.com/nerdwerx/daggerbot/config"
 )
 
 func main() {
@@ -15,7 +16,7 @@ func main() {
 }
 
 func init() {
-	flag.BoolVar(&bot.Config.Debug, "debug", false, "Enable debug mode")
+	flag.BoolVar(&config.Debug, "debug", false, "Enable debug mode")
 	flag.Parse()
 
 	if err := godotenv.Load(); err != nil {
