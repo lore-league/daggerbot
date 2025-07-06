@@ -64,7 +64,11 @@ func Run() error {
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt)
 	<-stop
+
 	log.Println("Bot gracefully shutting down...")
+	if err := config.SaveGuilds(); err != nil {
+		log.Printf("Error saving guild configurations: %v", err)
+	}
 
 	return nil
 }

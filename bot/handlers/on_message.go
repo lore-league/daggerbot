@@ -12,13 +12,10 @@ import (
 
 func OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	var (
-		cmd     commands.Command
-		command string
 		debug   = config.Debug
-		fullcmd []string
-		prefix  = config.Prefix
+		fullcmd = make([]string, 0)
+		message = m.Content
 		my      = s.State.User
-		ok      bool
 	)
 
 	// Ignore my own messages
@@ -26,11 +23,21 @@ func OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	message := m.Content
-	channel, _ := s.Channel(m.ChannelID)
+	if m.Member.User == nil {
+		m.Member.User = m.Author // Ensure m.Member.User is set to the message author
+	}
 
-	if debug {
-		log.Printf("[DEBUG] Channel: %v; Author: %s; Message: %q", channel.Name, m.Author, m.Content)
+	guild, ok := config.Guilds[m.GuildID]
+	if !ok {
+		log.Printf("Message received from invalid Guild: %s", m.GuildID)
+		return
+	}
+	prefix := guild.Config["prefix"]
+
+	channel, err := s.Channel(m.ChannelID)
+	if err != nil {
+		log.Printf("Failed to fetch channel %s: %v", m.ChannelID, err)
+		return
 	}
 
 	for _, mention := range m.Mentions {
@@ -58,12 +65,13 @@ func OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		}
 	}
 
-	command = strings.TrimSpace(fullcmd[0])
+	command := strings.TrimSpace(fullcmd[0])
 	if command == "" {
 		return
 	}
 
-	if cmd, ok = commands.Commands[command]; !ok {
+	cmd, ok := commands.Commands[strings.ToLower(command)]
+	if !ok {
 		if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Sorry, I don't understand %q.", command)); err != nil {
 			log.Printf("Failed sending Unknown Command response: %v", err)
 		}
@@ -80,15 +88,9 @@ func OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		cmd.Args = []string{}
 	}
 
-	guild, ok := config.Guilds[m.GuildID]
-	if !ok {
-		log.Printf("Message received from invalid Guild: %s", m.GuildID)
-		return
-	}
-
 	log.Printf("[%s] @%s (%s) executed command %q with args %v in channel %q", guild.Name, m.Author.DisplayName(), m.Author, cmd.Name, cmd.Args, channel.Name)
 
-	if err := cmd.Handler(s, m); err != nil {
+	if err := cmd.Handler(cmd, s, m); err != nil {
 		log.Printf("Error executing command %q: %v", cmd.Name, err)
 	}
 
