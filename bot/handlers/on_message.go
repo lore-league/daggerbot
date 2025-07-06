@@ -81,6 +81,8 @@ func OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
+	cmd.Guild = guild // Set the guild for the command
+
 	// Inject any args into the command
 	if len(fullcmd) > 1 {
 		cmd.Args = fullcmd[1:]
@@ -88,7 +90,15 @@ func OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		cmd.Args = []string{}
 	}
 
-	log.Printf("[%s] @%s (%s) executed command %q with args %v in channel %q", guild.Name, m.Author.DisplayName(), m.Author, cmd.Name, cmd.Args, channel.Name)
+	if cmd.Admin && !guild.IsAdmin(m.Member) {
+		log.Printf("User is not an admin, denying access to %s command", cmd.Name)
+		if _, err := s.ChannelMessageSend(m.ChannelID, "You must be an admin to use this command!"); err != nil {
+			log.Printf("Failed sending Admin Command response: %v", err)
+		}
+		return
+	}
+
+	log.Printf("[%s] @%s (%s) executing command %q with args %v in channel %q", guild.Name, m.Author.DisplayName(), m.Author, cmd.Name, cmd.Args, channel.Name)
 
 	if err := cmd.Handler(cmd, s, m); err != nil {
 		log.Printf("Error executing command %q: %v", cmd.Name, err)

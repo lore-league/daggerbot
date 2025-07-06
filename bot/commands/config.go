@@ -6,31 +6,9 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
-	"github.com/nerdwerx/daggerbot/config"
 )
 
 func Config(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
-	gid := m.GuildID
-	if gid == "" {
-		if _, err := s.ChannelMessageSend(m.ChannelID, "This command can only be used on a server"); err != nil {
-			log.Printf("failed sending Config Command response: %v", err)
-		}
-		return nil
-	}
-
-	guild, ok := config.Guilds[gid]
-	if !ok { // This shouldn't happen
-		return fmt.Errorf("guild %s was not registered before use", gid)
-	}
-
-	if !guild.IsAdmin(m.Member) {
-		log.Println("User is not an admin, denying access to Config command")
-		if _, err := s.ChannelMessageSend(m.ChannelID, "You must be an admin to use this command!"); err != nil {
-			log.Printf("Failed sending Config Command response: %v", err)
-		}
-		return nil
-	}
-
 	if len(cmd.Args) < 1 {
 		if _, err := s.ChannelMessageSend(m.ChannelID, "Usage: !config <command> [args]\nAvailable commands: `get`, `set`, `list`, `clear`, `help`"); err != nil {
 			log.Printf("Failed sending Config Command response: %v", err)
@@ -49,7 +27,7 @@ func Config(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) erro
 			return nil
 		}
 		key := cmd.Args[1]
-		value, exists := guild.Config[key]
+		value, exists := cmd.Guild.Config[key]
 		if !exists {
 			if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Config key `%s` does not exist", key)); err != nil {
 				log.Printf("Failed sending Config Command response: %v", err)
@@ -70,8 +48,8 @@ func Config(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) erro
 		}
 		key := cmd.Args[1]
 		value := strings.TrimSpace(strings.Join(cmd.Args[2:], " "))
-		if guild.Config == nil {
-			guild.Config = make(map[string]string)
+		if cmd.Guild.Config == nil {
+			cmd.Guild.Config = make(map[string]string)
 		}
 		if key == "" || value == "" {
 			if _, err := s.ChannelMessageSend(m.ChannelID, "Key and value cannot be empty"); err != nil {
@@ -79,9 +57,9 @@ func Config(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) erro
 			}
 			return nil
 		}
-		guild.Config[key] = value
-		if err := guild.Save(); err != nil {
-			log.Printf("Failed to save config for guild %s: %v", gid, err)
+		cmd.Guild.Config[key] = value
+		if err := cmd.Guild.Save(); err != nil {
+			log.Printf("Failed to save config for guild %q: %v", cmd.Guild.Name, err)
 			if _, err := s.ChannelMessageSend(m.ChannelID, "Failed to save config"); err != nil {
 				log.Printf("Failed sending Config Command response: %v", err)
 			}
@@ -93,14 +71,14 @@ func Config(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) erro
 		return nil
 
 	case "list":
-		if len(guild.Config) == 0 {
+		if len(cmd.Guild.Config) == 0 {
 			if _, err := s.ChannelMessageSend(m.ChannelID, "No config variables set for this guild"); err != nil {
 				log.Printf("Failed sending Config Command response: %v", err)
 			}
 			return nil
 		}
 		var response string
-		for key, value := range guild.Config {
+		for key, value := range cmd.Guild.Config {
 			response += fmt.Sprintf("`%s: %s`\n", key, value)
 		}
 		if _, err := s.ChannelMessageSend(m.ChannelID, response); err != nil {
@@ -116,15 +94,15 @@ func Config(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) erro
 			return nil
 		}
 		key := cmd.Args[1]
-		if _, exists := guild.Config[key]; !exists {
+		if _, exists := cmd.Guild.Config[key]; !exists {
 			if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Config key `%s` does not exist", key)); err != nil {
 				log.Printf("Failed sending Config Command response: %v", err)
 			}
 			return nil
 		}
-		delete(guild.Config, key)
-		if err := guild.Save(); err != nil {
-			log.Printf("Failed to save config for guild %s: %v", gid, err)
+		delete(cmd.Guild.Config, key)
+		if err := cmd.Guild.Save(); err != nil {
+			log.Printf("Failed to save config for guild %q: %v", cmd.Guild.Name, err)
 			if _, err := s.ChannelMessageSend(m.ChannelID, "Failed to save config"); err != nil {
 				log.Printf("Failed sending Config Command response: %v", err)
 			}
@@ -150,5 +128,7 @@ func Config(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) erro
 }
 
 func init() {
-	RegisterCommand(NewCommand("Config", "Sets or Retrieves config variables (admin only)", Config))
+	cmd := NewCommand("Config", "Sets or retrieves config variables", Config)
+	cmd.Admin = true
+	RegisterCommand(cmd)
 }
