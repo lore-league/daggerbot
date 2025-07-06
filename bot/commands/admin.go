@@ -33,7 +33,7 @@ func Admin(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) error
 		}
 		adminList := "Admin roles for this guild:\n"
 		for _, role := range cmd.Guild.Admins {
-			adminList += fmt.Sprintf("- %q (%s)\n", role.Name, role.ID)
+			adminList += fmt.Sprintf("- %s [%s]\n", role.Name, role.ID)
 		}
 		if _, err := s.ChannelMessageSend(m.ChannelID, adminList); err != nil {
 			log.Printf("Failed sending Admin Command response: %v", err)

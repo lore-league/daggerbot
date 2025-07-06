@@ -17,6 +17,7 @@ func main() {
 
 func init() {
 	flag.BoolVar(&config.Debug, "debug", false, "Enable debug mode")
+	flag.BoolVar(&config.Verbose, "verbose", false, "Enable verbose mode")
 	flag.Parse()
 
 	if err := godotenv.Load(); err != nil {

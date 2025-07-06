@@ -115,10 +115,10 @@ func Config(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) erro
 
 	default:
 		helpMessage := "Config Command Help:\n" +
-			"`!config get <key>` - Retrieves the value of a config key" +
-			"`!config set <key> <value>` - Sets a config key to a value" +
-			"`!config list` - Lists all config keys and their values" +
-			"`!config clear <key>` - Clears a config key" +
+			"`!config get <key>` - Retrieves the value of a config key\n" +
+			"`!config set <key> <value>` - Sets a config key to a value\n" +
+			"`!config list` - Lists all config keys and their values\n" +
+			"`!config clear <key>` - Clears a config key\n" +
 			"`!config help` - Displays this help message"
 		if _, err := s.ChannelMessageSend(m.ChannelID, helpMessage); err != nil {
 			log.Printf("Failed sending Config Command response: %v", err)

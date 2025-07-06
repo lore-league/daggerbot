@@ -10,10 +10,11 @@ import (
 const Version = "0.1.0"
 
 var (
-	Debug  bool
-	Guilds map[string]*Guild
-	Prefix string
-	Token  string
+	Debug   bool
+	Guilds  map[string]*Guild
+	Prefix  string
+	Token   string
+	Verbose bool
 )
 
 func RegisterGuild(g *discordgo.Guild) error {
@@ -43,7 +44,6 @@ func SaveGuilds() error {
 
 func init() {
 	log.Println("initializing configuration...")
-	Debug = false // Default debug mode is off
 	Guilds = make(map[string]*Guild)
 	Prefix = "!" // Default command prefix
 	Token = ""   // Token should be set externally

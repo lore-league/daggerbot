@@ -48,7 +48,7 @@ func NewGuild(guild *discordgo.Guild) *Guild {
 		}
 	}
 	if Debug {
-		log.Printf("[DEBUG] added new Guild: %q with ID %s", g.Name, g.ID)
+		log.Printf("[DEBUG] New Guild created: %q with ID %s", g.Name, g.ID)
 		log.Printf("[DEBUG] found guild roles: %v", g.RoleNames())
 	}
 
@@ -111,8 +111,8 @@ func (g *Guild) AddAdmin(rid string) error {
 	}
 	if !slices.Contains(g.Admins, role) {
 		g.Admins = append(g.Admins, role)
-		if Debug {
-			log.Printf("[DEBUG] Added role %q (%s) as admin in guild %q", role.Name, role.ID, g.Name)
+		if Verbose {
+			log.Printf("[VERBOSE] Added role %q (%s) as admin in guild %q", role.Name, role.ID, g.Name)
 		}
 		return g.Save()
 	}
@@ -122,7 +122,7 @@ func (g *Guild) AddAdmin(rid string) error {
 	return nil
 }
 
-func (g *Guild) FindRollByName(name string) *discordgo.Role {
+func (g *Guild) FindRoleByName(name string) *discordgo.Role {
 	for r := range g.Roles() {
 		if strings.EqualFold(r.Name, strings.TrimSpace(name)) {
 			return r
@@ -172,14 +172,12 @@ func (g *Guild) IsAdmin(member *discordgo.Member) bool {
 	for _, r := range member.Roles {
 		role := g.FindRoleByID(r)
 		if role == nil {
-			if Debug {
-				log.Printf("[DEBUG] Role with ID %q not found in guild %q", r, g.Name)
-			}
+			log.Printf("[ERR] Role with ID %q not found in guild %q", r, g.Name)
 			continue // Skip if role not found -- should not happen
 		}
 		if slices.Contains(g.AdminIDs(), r) {
-			if Debug {
-				log.Printf("[DEBUG] User %q has admin role %q in guild %q", user.Username, role.Name, g.Name)
+			if Verbose {
+				log.Printf("[VERBOSE] User %q has admin role %q in guild %q", user.Username, role.Name, g.Name)
 			}
 			return true // User has an admin role
 		}

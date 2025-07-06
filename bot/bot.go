@@ -37,7 +37,11 @@ func Run() error {
 
 	if config.Debug {
 		log.Println("Debug mode enabled")
-		// discord.Debug = true
+		discord.Debug = true
+	}
+
+	if config.Verbose {
+		log.Println("Verbose mode enabled")
 	}
 
 	// add a event handlers

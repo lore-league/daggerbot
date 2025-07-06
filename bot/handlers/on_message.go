@@ -12,7 +12,6 @@ import (
 
 func OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	var (
-		debug   = config.Debug
 		fullcmd = make([]string, 0)
 		message = m.Content
 		my      = s.State.User
@@ -43,7 +42,7 @@ func OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	for _, mention := range m.Mentions {
 		if mention.ID == my.ID {
 			// Extract the command from the message
-			if debug {
+			if config.Debug {
 				log.Printf("[DEBUG] Mention found: %v", mention)
 			}
 			if idx := strings.Index(message, prefix); idx != -1 {
@@ -58,7 +57,7 @@ func OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 			fullcmd = strings.Split(after, " ")
 		} else {
 			// If no mention or prefix found, return
-			if debug {
+			if config.Debug {
 				log.Printf("[DEBUG] No command found in message: %q", message)
 			}
 			return
@@ -75,8 +74,8 @@ func OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Sorry, I don't understand %q.", command)); err != nil {
 			log.Printf("Failed sending Unknown Command response: %v", err)
 		}
-		if debug {
-			log.Printf("[DEBUG] Command %q not found in commands map", command)
+		if config.Verbose {
+			log.Printf("[VERBOSE] Command %q not found in commands map", command)
 		}
 		return
 	}
@@ -91,8 +90,8 @@ func OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	}
 
 	if cmd.Admin && !guild.IsAdmin(m.Member) {
-		log.Printf("User is not an admin, denying access to %s command", cmd.Name)
-		if _, err := s.ChannelMessageSend(m.ChannelID, "You must be an admin to use this command!"); err != nil {
+		log.Printf("[%s] user @%s (%s) is not an admin, denying access to %s command", guild.Name, m.Author.DisplayName(), m.Author, cmd.Name)
+		if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("you must be an admin to use this command, %s", m.Author)); err != nil {
 			log.Printf("Failed sending Admin Command response: %v", err)
 		}
 		return
