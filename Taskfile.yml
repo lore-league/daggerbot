@@ -1,0 +1,38 @@
+# https://taskfile.dev
+
+version: "3"
+
+tasks:
+  default:
+    cmds:
+      - task: check
+
+  check:
+    desc: Run linters
+    deps: [format]
+    cmds:
+      - trunk check
+
+  test:
+    desc: Run tests
+    cmds:
+      - go test ./...
+
+  tidy:
+    desc: Tidy up the module
+    cmds:
+      - go mod tidy
+
+  format:
+    desc: Run formatters
+    deps: [tidy]
+    cmds:
+      - trunk fmt
+
+  upgrade:
+    desc: Upgrade dependencies
+    aliases: [update]
+    cmds:
+      - go get -u
+      - trunk upgrade
+      - task tidy
