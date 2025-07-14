@@ -80,27 +80,25 @@ func OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 		return
 	}
 
-	cmd.Guild = guild // Set the guild for the command
+	cmd.SetGuild(guild) // Set the guild for the command
 
 	// Inject any args into the command
 	if len(fullcmd) > 1 {
-		cmd.Args = fullcmd[1:]
-	} else {
-		cmd.Args = []string{}
+		cmd.SetArgs(fullcmd[1:])
 	}
 
-	if cmd.Admin && !guild.IsAdmin(m.Member) {
-		log.Printf("[%s] user @%s (%s) is not an admin, denying access to %s command", guild.Name, m.Author.DisplayName(), m.Author, cmd.Name)
+	if cmd.Admin() && !guild.IsAdmin(m.Member) {
+		log.Printf("[%s] user @%s (%s) is not an admin, denying access to %s command", guild.Name, m.Author.DisplayName(), m.Author, cmd.Name())
 		if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("you must be an admin to use this command, %s", m.Author)); err != nil {
 			log.Printf("Failed sending Admin Command response: %v", err)
 		}
 		return
 	}
 
-	log.Printf("[%s] @%s (%s) executing command %q with args %v in channel %q", guild.Name, m.Author.DisplayName(), m.Author, cmd.Name, cmd.Args, channel.Name)
+	log.Printf("[%s] @%s (%s) executing command %q with args %v in channel %q", guild.Name, m.Author.DisplayName(), m.Author, cmd.Name(), cmd.Args(), channel.Name)
 
-	if err := cmd.Handler(cmd, s, m); err != nil {
-		log.Printf("Error executing command %q: %v", cmd.Name, err)
+	if err := cmd.Run(s, m); err != nil {
+		log.Printf("Error executing command %q: %v", cmd.Name(), err)
 	}
 
 }

@@ -8,7 +8,10 @@ import (
 )
 
 func Admin(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
-	if len(cmd.Args) < 1 {
+	args := cmd.Args()
+	guild := cmd.Guild()
+
+	if len(args) < 1 {
 		if _, err := s.ChannelMessageSend(m.ChannelID, "Usage: !admin <command> [args]\nAvailable commands: `list`, `add <role_id>`, `remove <role_id>`"); err != nil {
 			log.Printf("Failed sending Admin Command response: %v", err)
 		}
@@ -16,51 +19,51 @@ func Admin(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) error
 	}
 
 	// Handle the config command
-	switch cmd.Args[0] {
+	switch args[0] {
 	case "list":
-		if len(cmd.Args) > 1 {
+		if len(args) > 1 {
 			if _, err := s.ChannelMessageSend(m.ChannelID, "Usage: !admin list"); err != nil {
 				log.Printf("Failed sending Admin Command response: %v", err)
 			}
 			return nil
 		}
 		// List all admin roles
-		if len(cmd.Guild.Admins) == 0 {
+		if len(guild.Admins) == 0 {
 			if _, err := s.ChannelMessageSend(m.ChannelID, "No admin roles configured for this guild."); err != nil {
 				log.Printf("Failed sending Admin Command response: %v", err)
 			}
 			return nil
 		}
 		adminList := "Admin roles for this guild:\n"
-		for _, role := range cmd.Guild.Admins {
+		for _, role := range guild.Admins {
 			adminList += fmt.Sprintf("- %s [%s]\n", role.Name, role.ID)
 		}
 		if _, err := s.ChannelMessageSend(m.ChannelID, adminList); err != nil {
 			log.Printf("Failed sending Admin Command response: %v", err)
 		}
 	case "add":
-		if len(cmd.Args) < 2 {
+		if len(args) < 2 {
 			if _, err := s.ChannelMessageSend(m.ChannelID, "Usage: !admin add <role_id>"); err != nil {
 				log.Printf("Failed sending Admin Command response: %v", err)
 			}
 			return nil
 		}
-		roleID := cmd.Args[1]
-		role, err := s.State.Role(cmd.Guild.ID, roleID)
+		roleID := args[1]
+		role, err := s.State.Role(guild.ID, roleID)
 		if err != nil {
 			if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Role with ID %s not found.", roleID)); err != nil {
 				log.Printf("Failed sending Admin Command response: %v", err)
 			}
 			return nil
 		}
-		if cmd.Guild.IsAdminRole(role) {
+		if guild.IsAdminRole(role) {
 			if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Role %q is already an admin role.", role.Name)); err != nil {
 				log.Printf("Failed sending Admin Command response: %v", err)
 			}
 			return nil
 		}
-		cmd.Guild.Admins = append(cmd.Guild.Admins, role)
-		if err := cmd.Guild.Save(); err != nil {
+		guild.Admins = append(guild.Admins, role)
+		if err := guild.Save(); err != nil {
 			log.Printf("Failed saving guild configuration: %v", err)
 			if _, err := s.ChannelMessageSend(m.ChannelID, "Failed to save admin role."); err != nil {
 				log.Printf("Failed sending Admin Command response: %v", err)
@@ -72,33 +75,33 @@ func Admin(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) error
 		}
 		return nil
 	case "remove":
-		if len(cmd.Args) < 2 {
+		if len(args) < 2 {
 			if _, err := s.ChannelMessageSend(m.ChannelID, "Usage: !admin remove <role_id>"); err != nil {
 				log.Printf("Failed sending Admin Command response: %v", err)
 			}
 			return nil
 		}
-		roleID := cmd.Args[1]
-		role, err := s.State.Role(cmd.Guild.ID, roleID)
+		roleID := args[1]
+		role, err := s.State.Role(guild.ID, roleID)
 		if err != nil {
 			if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Role with ID %s not found.", roleID)); err != nil {
 				log.Printf("Failed sending Admin Command response: %v", err)
 			}
 			return nil
 		}
-		if !cmd.Guild.IsAdminRole(role) {
+		if !guild.IsAdminRole(role) {
 			if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Role %q is not an admin role.", role.Name)); err != nil {
 				log.Printf("Failed sending Admin Command response: %v", err)
 			}
 			return nil
 		}
-		for i, r := range cmd.Guild.Admins {
+		for i, r := range guild.Admins {
 			if r.ID == role.ID {
-				cmd.Guild.Admins = append(cmd.Guild.Admins[:i], cmd.Guild.Admins[i+1:]...)
+				guild.Admins = append(guild.Admins[:i], guild.Admins[i+1:]...)
 				break
 			}
 		}
-		if err := cmd.Guild.Save(); err != nil {
+		if err := guild.Save(); err != nil {
 			log.Printf("Failed saving guild configuration: %v", err)
 			if _, err := s.ChannelMessageSend(m.ChannelID, "Failed to save admin role."); err != nil {
 				log.Printf("Failed sending Admin Command response: %v", err)
@@ -113,7 +116,7 @@ func Admin(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) error
 		if _, err := s.ChannelMessageSend(m.ChannelID, "Unknown admin command. Use `!admin list`, `!admin add <role_id>`, or `!admin remove <role_id>`"); err != nil {
 			log.Printf("Failed sending Admin Command response: %v", err)
 		}
-		return fmt.Errorf("unknown admin command: %s", cmd.Args[0])
+		return fmt.Errorf("unknown admin command: %s", args[0])
 	}
 
 	// Admin command logic goes here
@@ -123,6 +126,6 @@ func Admin(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) error
 
 func init() {
 	cmd := NewCommand("Admin", "Admin commands", Admin)
-	cmd.Admin = true
+	cmd.SetAdmin()
 	RegisterCommand(cmd)
 }
