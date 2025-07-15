@@ -6,16 +6,17 @@ import (
 	"strings"
 
 	"github.com/bwmarrin/discordgo"
+	"github.com/nerdwerx/daggerbot/config"
 )
 
 func Config(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
-	args := cmd.Args()
-	guild := cmd.Guild()
+	var (
+		args  = cmd.Args()
+		guild = cmd.Guild()
+	)
 
 	if len(args) < 1 {
-		if _, err := s.ChannelMessageSend(m.ChannelID, "Usage: !config <command> [args]\nAvailable commands: `get`, `set`, `list`, `clear`, `help`"); err != nil {
-			log.Printf("Failed sending Config Command response: %v", err)
-		}
+		MessageSend(s, m, "Usage: !config <command> [args]\nAvailable commands: `get`, `set`, `list`, `clear`, `help`")
 		return nil
 	}
 
@@ -24,108 +25,129 @@ func Config(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) erro
 
 	case "get":
 		if len(args) < 2 {
-			if _, err := s.ChannelMessageSend(m.ChannelID, "Usage: !config get <key>"); err != nil {
-				log.Printf("Failed sending Config Command response: %v", err)
-			}
+			MessageSend(s, m, "Usage: !config get <key>")
 			return nil
 		}
 		key := args[1]
-		value, exists := guild.Config[key]
+		value, exists := guild.GetConfigMap()[key]
 		if !exists {
-			if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Config key `%s` does not exist", key)); err != nil {
-				log.Printf("Failed sending Config Command response: %v", err)
-			}
+			MessageSend(s, m, fmt.Sprintf("Config key `%s` does not exist", key))
 			return nil
 		}
-		if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Config `%s`: %v", key, value)); err != nil {
-			log.Printf("Failed sending Config Command response: %v", err)
-		}
+		MessageSend(s, m, fmt.Sprintf("Config `%s`: %v", key, value))
 		return nil
 
 	case "set":
 		if len(args) < 3 {
-			if _, err := s.ChannelMessageSend(m.ChannelID, "Usage: !config set <key> <value>"); err != nil {
-				log.Printf("Failed sending Config Command response: %v", err)
-			}
+			MessageSend(s, m, "Usage: !config set <key> <value>")
 			return nil
 		}
 		key := args[1]
-		value := strings.TrimSpace(strings.Join(args[2:], " "))
-		if guild.Config == nil {
-			guild.Config = make(map[string]string)
-		}
-		if key == "" || value == "" {
-			if _, err := s.ChannelMessageSend(m.ChannelID, "Key and value cannot be empty"); err != nil {
-				log.Printf("Failed sending Config Command response: %v", err)
-			}
+		values := strings.Split(strings.Join(args[2:], ","), ",")
+		if key == "" || len(values) == 0 {
+			MessageSend(s, m, "Key and value cannot be empty")
 			return nil
 		}
-		guild.Config[key] = value
-		if err := guild.Save(); err != nil {
-			log.Printf("Failed to save config for guild %q: %v", guild.Name, err)
-			if _, err := s.ChannelMessageSend(m.ChannelID, "Failed to save config"); err != nil {
-				log.Printf("Failed sending Config Command response: %v", err)
+		cmap := guild.GetConfigMap()
+		if _, ok := cmap[key]; !ok {
+			MessageSend(s, m, fmt.Sprintf("Key must exist and must be one of %v", config.ConfigKeys))
+			return nil
+		}
+
+		// Special handling for prefix
+		if strings.TrimSpace(strings.ToLower(key)) == "prefix" {
+			if len(values) != 1 || len(values[0]) == 0 {
+				MessageSend(s, m, "Prefix must be a single non-empty string")
+				return nil
 			}
+			guild.SetPrefix(strings.TrimSpace(values[0]))
+			MessageSend(s, m, fmt.Sprintf("Prefix set to `%s`", guild.Prefix()))
+			return nil
+		}
+
+		// Handle roles
+		newValues := make([]*discordgo.Role, 0, len(values))
+		for _, v := range values {
+			v = strings.TrimSpace(v)
+			if v == "" {
+				continue
+			}
+			// Check to see if the value is a valid ID or a role name
+			if role := guild.FindRole(v); role != nil {
+				newValues = append(newValues, role) // Use the role ID if a role is found
+			} else {
+				MessageSend(s, m, fmt.Sprintf("Could not find a role associated with %s", v))
+				continue
+			}
+		}
+
+		if err := guild.SetRoleConfig(key, newValues); err != nil {
+			log.Printf("Failed to set config for guild %q: %v", guild.Name, err)
+			MessageSend(s, m, "Failed to set config")
 			return err
 		}
-		if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Config `%s` set to `%s`", key, value)); err != nil {
-			log.Printf("Failed sending Config Command response: %v", err)
-		}
+
+		MessageSend(s, m, fmt.Sprintf("Config `%s` set to `%s`", key, strings.Join(guild.RolesToNames(newValues), ", ")))
 		return nil
 
 	case "list":
-		if len(guild.Config) == 0 {
-			if _, err := s.ChannelMessageSend(m.ChannelID, "No config variables set for this guild"); err != nil {
-				log.Printf("Failed sending Config Command response: %v", err)
-			}
-			return nil
-		}
 		var response string
-		for key, value := range guild.Config {
-			response += fmt.Sprintf("`%s: %s`\n", key, value)
+
+		for _, key := range config.ConfigKeys {
+			if strings.ToLower(strings.TrimSpace(key)) == "prefix" {
+				response += fmt.Sprintf("`%s: %s`\n", key, guild.Prefix())
+			} else {
+				roles, err := guild.GetRoleConfig(key)
+				if err != nil {
+					log.Printf("Error retrieving roles for key %s: %v", key, err)
+					response += fmt.Sprintf("`%s: (error retrieving roles)`\n", key)
+					continue
+				}
+				if len(roles) == 0 {
+					response += fmt.Sprintf("`%s: (no roles assigned)`\n", key)
+					continue
+				}
+				response += fmt.Sprintf("`%s: %s`\n", key, strings.Join(guild.RolesToNames(roles), ", "))
+			}
 		}
-		if _, err := s.ChannelMessageSend(m.ChannelID, response); err != nil {
-			log.Printf("Failed sending Config Command response: %v", err)
-		}
+
+		MessageSend(s, m, response)
 		return nil
 
 	case "clear":
 		if len(args) < 2 {
-			if _, err := s.ChannelMessageSend(m.ChannelID, "Usage: !config clear <key>"); err != nil {
-				log.Printf("Failed sending Config Command response: %v", err)
-			}
+			MessageSend(s, m, "Usage: !config clear <key>")
 			return nil
 		}
 		key := args[1]
-		if _, exists := guild.Config[key]; !exists {
-			if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Config key `%s` does not exist", key)); err != nil {
-				log.Printf("Failed sending Config Command response: %v", err)
-			}
+		if _, exists := guild.GetConfigMap()[key]; !exists {
+			MessageSend(s, m, fmt.Sprintf("Config key `%s` does not exist", key))
 			return nil
 		}
-		delete(guild.Config, key)
-		if err := guild.Save(); err != nil {
-			log.Printf("Failed to save config for guild %q: %v", guild.Name, err)
-			if _, err := s.ChannelMessageSend(m.ChannelID, "Failed to save config"); err != nil {
-				log.Printf("Failed sending Config Command response: %v", err)
-			}
+		if key == "prefix" {
+			MessageSend(s, m, "You cannot clear the `prefix` key")
+			return nil
+		}
+		if err := guild.ClearConfig(key); err != nil {
+			log.Printf("Failed to clear config for guild %q: %v", guild.Name, err)
+			MessageSend(s, m, "Failed to clear config")
 			return err
 		}
-		if _, err := s.ChannelMessageSend(m.ChannelID, fmt.Sprintf("Config key `%s` cleared", key)); err != nil {
-			log.Printf("Failed sending Config Command response: %v", err)
-		}
+		MessageSend(s, m, fmt.Sprintf("Config key `%s` cleared", key))
 		return nil
 
 	default:
-		helpMessage := "Config Command Help:\n" +
-			"`!config get <key>` - Retrieves the value of a config key\n" +
-			"`!config set <key> <value>` - Sets a config key to a value\n" +
-			"`!config list` - Lists all config keys and their values\n" +
-			"`!config clear <key>` - Clears a config key\n" +
-			"`!config help` - Displays this help message"
-		if _, err := s.ChannelMessageSend(m.ChannelID, helpMessage); err != nil {
-			log.Printf("Failed sending Config Command response: %v", err)
+		keys := make([]string, 0, len(config.ConfigKeys))
+		for _, key := range config.ConfigKeys {
+			keys = append(keys, fmt.Sprintf("`%s`", strings.TrimSpace(key)))
 		}
+		MessageSend(s, m, "Config Command Help:\n"+
+			"`!config get <key>` - Retrieves the value of a config key\n"+
+			"`!config set <key> <value>` - Sets a config key to a value\n"+
+			"`!config list` - Lists all config keys and their values\n"+
+			"`!config clear <key>` - Clears a config key\n"+
+			"`!config help` - Displays this help message"+
+			"\n\nAvailable config keys: "+strings.Join(keys, ", "))
 		return nil
 	}
 }

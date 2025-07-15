@@ -7,7 +7,9 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-const Version = "0.1.0"
+const Version = "0.1.1"
+
+const IDRegex = `^\d{17,19}$` // Matches Discord IDs (17-19 digits)
 
 var (
 	Debug   bool
@@ -23,7 +25,7 @@ func RegisterGuild(g *discordgo.Guild) error {
 	}
 	if _, exists := Guilds[g.ID]; exists {
 		log.Printf("updating %q", g.Name)
-		Guilds[g.ID].SetRaw(g)
+		Guilds[g.ID].Update(g)
 	} else {
 		log.Printf("registered guild: %q (%s)", g.Name, g.ID)
 		Guilds[g.ID] = NewGuild(g)
