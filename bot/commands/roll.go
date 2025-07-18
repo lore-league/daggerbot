@@ -111,7 +111,7 @@ func multiDiceRoll(diceDesignation string) string {
 	}
 	rollValue, err := strconv.ParseFloat(splitString[1], 64)
 	if err != nil {
-		return fmt.Sprintf("%s is not a valid roll. A roll is a number, duality, or dice abbreviation", diceDesignation)
+		return fmt.Sprintf("%s is not a valid roll. A roll is a number, duality, or dice abbreviation", diceDesignationString)
 	}
 	for i := 0; i < numRolls; i++ {
 		dicevalue, _ := rollDice(rollValue)
