@@ -13,9 +13,10 @@ func proll(c *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
 	var (
 		args = c.Args()
 	)
+	roller := m.Author.DisplayName()
 
 	if len(args) < 1 {
-		MessagePrivateSend(s, m, rollDuality())
+		MessagePrivateSend(s, m, rollDuality(roller))
 		return nil
 	}
 
@@ -24,7 +25,7 @@ func proll(c *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
 	for _, roll := range args {
 
 		if strings.ToLower(roll) == "duality" || strings.ToLower(roll) == "duelity" {
-			results = append(results, rollDuality())
+			results = append(results, rollDuality(roller))
 			continue
 		}
 
@@ -36,7 +37,7 @@ func proll(c *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
 			continue
 		}
 		if isMultiDiceRoll {
-			results = append(results, rollMultiDice(roll))
+			results = append(results, rollMultiDice(roll, roller))
 		} else {
 			_, diceRollResultString := rollDice(diceNum)
 

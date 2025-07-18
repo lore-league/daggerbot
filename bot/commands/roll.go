@@ -15,9 +15,10 @@ func roll(c *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
 	var (
 		args = c.Args()
 	)
+	roller := m.Author.DisplayName()
 
 	if len(args) < 1 {
-		MessageSend(s, m, rollDuality())
+		MessageSend(s, m, rollDuality(roller))
 		return nil
 	}
 
@@ -26,7 +27,7 @@ func roll(c *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
 	for _, roll := range args {
 
 		if strings.ToLower(roll) == "duality" || strings.ToLower(roll) == "duelity" {
-			results = append(results, rollDuality())
+			results = append(results, rollDuality(roller))
 			continue
 		}
 
@@ -38,16 +39,16 @@ func roll(c *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
 			continue
 		}
 		if isMultiDiceRoll {
-			results = append(results, rollMultiDice(roll))
+			results = append(results, rollMultiDice(roll, roller))
 		} else {
 			_, diceRollResultString := rollDice(diceNum)
 
 			if diceRollResultString == "1" {
-				results = append(results, fmt.Sprintf("your d%s result is %s :cry:\n", roll, diceRollResultString))
+				results = append(results, fmt.Sprintf("%s's d%s result is %s :cry:\n", roller, roll, diceRollResultString))
 				continue
 			}
 
-			results = append(results, fmt.Sprintf("your d%s result is %s\n", roll, diceRollResultString))
+			results = append(results, fmt.Sprintf("%s's d%s result is %s\n", roller, roll, diceRollResultString))
 		}
 	}
 
@@ -60,7 +61,7 @@ func init() {
 	RegisterCommand(NewCommand("Roll", "Replies with Roll!", roll))
 }
 
-func rollDuality() string {
+func rollDuality(roller string) string {
 
 	hope, hopeString := rollDice(12)
 	fear, fearString := rollDice(12)
@@ -71,14 +72,14 @@ func rollDuality() string {
 	var dualityResult string
 
 	if hope > fear {
-		dualityResult = "You rolled with Hope :heart:"
+		dualityResult = fmt.Sprintf("%s rolled with Hope :heart:", roller)
 	} else if fear > hope {
-		dualityResult = "You rolled with Fear :dagger:"
+		dualityResult = fmt.Sprintf("%s rolled with Fear :dagger:", roller)
 	} else {
-		dualityResult = "# YOU CRIT!!!! :dagger: :heart:"
+		dualityResult = fmt.Sprintf("# %s CRIT!!!! :dagger: :heart:", strings.ToUpper(roller))
 	}
 
-	return fmt.Sprintf("> %s \n> Your Hope roll was %s \n> Your Fear roll was %s \n> Your total was %s\n", dualityResult, hopeString, fearString, resultString)
+	return fmt.Sprintf("> %s \n> The Hope roll was %s \n> The Fear roll was %s \n> The total was %s\n", dualityResult, hopeString, fearString, resultString)
 
 }
 
@@ -88,7 +89,7 @@ func rollDice(diceSides float64) (float64, string) {
 	return diceRollResult, diceRollResultString
 }
 
-func rollMultiDice(diceDesignation string) string {
+func rollMultiDice(diceDesignation string, roller string) string {
 	var positiveModifier float64 = 0
 	var negativeModifier float64 = 0
 	var diceTotal float64 = 0
@@ -121,5 +122,5 @@ func rollMultiDice(diceDesignation string) string {
 	diceTotal += (positiveModifier - negativeModifier)
 	diceTotalString := strconv.FormatFloat(diceTotal, 'f', -1, 64)
 
-	return fmt.Sprintf("your %s result is %s\n", diceDesignationString, diceTotalString)
+	return fmt.Sprintf("%s's %s result is %s\n", roller, diceDesignationString, diceTotalString)
 }
