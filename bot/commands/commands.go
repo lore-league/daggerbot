@@ -101,3 +101,19 @@ func MessageSend(s *discordgo.Session, m *discordgo.MessageCreate, message strin
 		log.Printf("Sent message to channel %s: %s", m.ChannelID, message)
 	}
 }
+
+func MessagePrivateSend(s *discordgo.Session, m *discordgo.MessageCreate, message string) {
+	if len(message) > 2000 {
+		log.Printf("message exceeds Discord's 2000 character limit")
+	}
+	userChannel, err := s.UserChannelCreate(m.Author.ID)
+	if err != nil {
+		log.Printf("failed to open channel to user: %s", m.Author.DisplayName())
+	}
+	if _, err := s.ChannelMessageSend(userChannel.ID, message); err != nil {
+		log.Printf("failed to send message: %s", err.Error())
+	}
+	if config.Debug {
+		log.Printf("Sent message to channel %s: %s", m.ChannelID, message)
+	}
+}

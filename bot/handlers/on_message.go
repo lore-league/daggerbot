@@ -84,9 +84,7 @@ func OnMessage(s *discordgo.Session, m *discordgo.MessageCreate) {
 	cmd.SetGuild(guild)
 
 	// Inject any args into the command
-	if len(fullcmd) > 1 {
-		cmd.SetArgs(fullcmd[1:])
-	}
+	cmd.SetArgs(fullcmd[1:])
 
 	if cmd.Admin() && !guild.IsAdmin(m.Member) {
 		log.Printf("[%s] user @%s (%s) is not an admin, denying access to %s command", guild.Name, m.Author.DisplayName(), m.Author, cmd.Name)
