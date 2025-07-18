@@ -9,7 +9,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-func dmroll(c *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
+func proll(c *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
 	var (
 		args = c.Args()
 	)
@@ -55,5 +55,5 @@ func dmroll(c *Command, s *discordgo.Session, m *discordgo.MessageCreate) error 
 }
 
 func init() {
-	RegisterCommand(NewCommand("DMRoll", "Replies with Roll!", dmroll))
+	RegisterCommand(NewCommand("PRoll", "Privately replies with Roll!", proll))
 }
