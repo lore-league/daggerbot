@@ -38,7 +38,7 @@ func roll(c *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
 			continue
 		}
 		if isMultiDiceRoll {
-			results = append(results, multiDiceRoll(roll))
+			results = append(results, rollMultiDice(roll))
 		} else {
 			_, diceRollResultString := rollDice(diceNum)
 
@@ -88,7 +88,7 @@ func rollDice(diceSides float64) (float64, string) {
 	return diceRollResult, diceRollResultString
 }
 
-func multiDiceRoll(diceDesignation string) string {
+func rollMultiDice(diceDesignation string) string {
 	var positiveModifier float64 = 0
 	var negativeModifier float64 = 0
 	var diceTotal float64 = 0

@@ -36,7 +36,7 @@ func proll(c *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
 			continue
 		}
 		if isMultiDiceRoll {
-			results = append(results, multiDiceRoll(roll))
+			results = append(results, rollMultiDice(roll))
 		} else {
 			_, diceRollResultString := rollDice(diceNum)
 
