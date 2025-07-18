@@ -25,7 +25,7 @@ func roll(c *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
 
 	for _, roll := range args {
 
-		if roll == "duality" || roll == "duelity" {
+		if strings.ToLower(roll) == "duality" || strings.ToLower(roll) == "duelity" {
 			results = append(results, rollDuality())
 			continue
 		}
