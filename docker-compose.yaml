@@ -1,0 +1,10 @@
+services:
+  app:
+    build:
+      context: .
+      target: ${GO_ENV}
+    container_name: daggerbot
+    env_file:
+      - ./.env
+    volumes:
+      - .:/app
