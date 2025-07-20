@@ -7,7 +7,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-const Version = "0.1.1"
+const Version = "0.2.0"
 
 const IDRegex = `^\d{17,19}$` // Matches Discord IDs (17-19 digits)
 
