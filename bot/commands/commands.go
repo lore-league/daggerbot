@@ -1,6 +1,7 @@
 package commands
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"strings"
@@ -90,30 +91,44 @@ func NewCommand(name, description string, handler Handler) *Command {
 	}
 }
 
-func MessageSend(s *discordgo.Session, m *discordgo.MessageCreate, message string) {
+func MessageSend(s *discordgo.Session, m *discordgo.MessageCreate, message string) error {
 	if len(message) > 2000 {
-		log.Printf("message exceeds Discord's 2000 character limit")
+		message := fmt.Sprintf("Message exceeds Discord's 2000 character limit: %d characters", len(message))
+		log.Println(message)
+		return errors.New(message)
 	}
+
 	if _, err := s.ChannelMessageSend(m.ChannelID, message); err != nil {
 		log.Printf("failed to send message: %s", err.Error())
+		return err
 	}
+
 	if config.Debug {
 		log.Printf("Sent message to channel %s: %s", m.ChannelID, message)
 	}
+	return nil
 }
 
-func MessagePrivateSend(s *discordgo.Session, m *discordgo.MessageCreate, message string) {
+func MessagePrivateSend(s *discordgo.Session, m *discordgo.MessageCreate, message string) error {
 	if len(message) > 2000 {
-		log.Printf("message exceeds Discord's 2000 character limit")
+		message := fmt.Sprintf("Message exceeds Discord's 2000 character limit: %d characters", len(message))
+		log.Println(message)
+		return errors.New(message)
 	}
+
 	userChannel, err := s.UserChannelCreate(m.Author.ID)
 	if err != nil {
-		log.Printf("failed to open channel to user: %s", m.Author.DisplayName())
+		log.Printf("failed to open channel to user %q: %s", m.Author.DisplayName(), err.Error())
+		return err
 	}
+
 	if _, err := s.ChannelMessageSend(userChannel.ID, message); err != nil {
 		log.Printf("failed to send message: %s", err.Error())
+		return err
 	}
+
 	if config.Debug {
 		log.Printf("Sent message to channel %s: %s", m.ChannelID, message)
 	}
+	return nil
 }

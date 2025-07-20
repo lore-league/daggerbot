@@ -57,7 +57,7 @@ USER 1001
 COPY --from=builder /build/daggerbot ./
 
 # Add a healthcheck to ensure the container is running
-HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 CMD [ "/prod/daggerbot", "--healthcheck" ] || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 CMD [ "/prod/daggerbot", "--healthcheck" ]
 
 # Start the application
 CMD ["/prod/daggerbot"]
