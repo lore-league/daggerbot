@@ -12,26 +12,24 @@ import (
 )
 
 func roll(c *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
-	var (
-		args = c.Args()
-	)
-	roller := m.Author.DisplayName()
+	return MessageSend(s, m, parseRoll(c.Args(), m.Author.DisplayName()))
+}
 
+func parseRoll(args []string, roller string) string {
 	if len(args) < 1 {
-		MessageSend(s, m, rollDuality(roller))
-		return nil
+		return rollDuality(roller)
 	}
 
 	var results []string
 
 	for _, roll := range args {
-
-		if strings.ToLower(roll) == "duality" || strings.ToLower(roll) == "duelity" {
+		if strings.EqualFold(roll, "duality") || strings.EqualFold(roll, "duelity") {
 			results = append(results, rollDuality(roller))
 			continue
 		}
 
-		isMultiDiceRoll, _ := regexp.MatchString("^[0-9]*d[0-9]+.*$", roll)
+		rollRegex := regexp.MustCompile("^[0-9]*d[0-9]+.*$")
+		isMultiDiceRoll := rollRegex.MatchString(roll)
 
 		diceNum, err := strconv.ParseFloat(roll, 64)
 		if err != nil && !isMultiDiceRoll {
@@ -41,52 +39,47 @@ func roll(c *Command, s *discordgo.Session, m *discordgo.MessageCreate) error {
 		if isMultiDiceRoll {
 			results = append(results, rollMultiDice(roll, roller))
 		} else {
-			_, diceRollResultString := rollDice(diceNum)
+			diceRollResultString := strconv.FormatFloat(rollDice(diceNum), 'f', -1, 64)
 
 			if diceRollResultString == "1" {
-				results = append(results, fmt.Sprintf("%s's d%s result is %s :cry:\n", roller, roll, diceRollResultString))
+				results = append(results, fmt.Sprintf("%s d%s result is %s :cry:\n", roller, roll, diceRollResultString))
 				continue
 			}
 
-			results = append(results, fmt.Sprintf("%s's d%s result is %s\n", roller, roll, diceRollResultString))
+			results = append(results, fmt.Sprintf("%s d%s result is %s\n", roller, roll, diceRollResultString))
 		}
 	}
 
-	MessageSend(s, m, strings.Join(results, "\n"))
-	return nil
-
-}
-
-func init() {
-	RegisterCommand(NewCommand("Roll", "Replies with Roll!", roll))
+	return strings.Join(results, "\n")
 }
 
 func rollDuality(roller string) string {
 
-	hope, hopeString := rollDice(12)
-	fear, fearString := rollDice(12)
+	hope := rollDice(12)
+	hopeString := strconv.FormatFloat(hope, 'f', -1, 64)
+
+	fear := rollDice(12)
+	fearString := strconv.FormatFloat(fear, 'f', -1, 64)
 
 	result := hope + fear
 	resultString := strconv.FormatFloat(result, 'f', -1, 64)
 
-	var dualityResult string
-
-	if hope > fear {
-		dualityResult = fmt.Sprintf("%s rolled with Hope :heart:", roller)
-	} else if fear > hope {
-		dualityResult = fmt.Sprintf("%s rolled with Fear :dagger:", roller)
-	} else {
-		dualityResult = fmt.Sprintf("# %s CRIT!!!! :dagger: :heart:", strings.ToUpper(roller))
+	if hope == fear {
+		return fmt.Sprintf("# %s CRIT!!! :dagger: :heart:\n> with double %s", strings.ToUpper(roller), hopeString)
 	}
 
-	return fmt.Sprintf("> %s \n> The Hope roll was %s \n> The Fear roll was %s \n> The total was %s\n", dualityResult, hopeString, fearString, resultString)
+	dualityResult := fmt.Sprintf("%s rolled %s ", roller, resultString)
+	if hope > fear {
+		dualityResult += "with Hope :heart:"
+	} else {
+		dualityResult += "with Fear :dagger:"
+	}
 
+	return fmt.Sprintf("%s\n> _Hope_ was %s and _Fear_ was %s", dualityResult, hopeString, fearString)
 }
 
-func rollDice(diceSides float64) (float64, string) {
-	diceRollResult := math.Ceil(rand.Float64() * diceSides)
-	diceRollResultString := strconv.FormatFloat(diceRollResult, 'f', -1, 64)
-	return diceRollResult, diceRollResultString
+func rollDice(diceSides float64) float64 {
+	return math.Ceil(rand.Float64() * diceSides)
 }
 
 func rollMultiDice(diceDesignation string, roller string) string {
@@ -115,12 +108,16 @@ func rollMultiDice(diceDesignation string, roller string) string {
 		return fmt.Sprintf("%s is not a valid roll. A roll is a number, duality, or dice abbreviation", diceDesignationString)
 	}
 	for i := 0; i < numRolls; i++ {
-		dicevalue, _ := rollDice(rollValue)
+		dicevalue := rollDice(rollValue)
 		diceTotal += dicevalue
 	}
 
 	diceTotal += (positiveModifier - negativeModifier)
 	diceTotalString := strconv.FormatFloat(diceTotal, 'f', -1, 64)
 
-	return fmt.Sprintf("%s's %s result is %s\n", roller, diceDesignationString, diceTotalString)
+	return fmt.Sprintf("%s %s result is %s\n", roller, diceDesignationString, diceTotalString)
+}
+
+func init() {
+	RegisterCommand(NewCommand("Roll", "Replies with Roll!", roll))
 }

@@ -16,8 +16,7 @@ func Config(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) erro
 	)
 
 	if len(args) < 1 {
-		MessageSend(s, m, "Usage: !config <command> [args]\nAvailable commands: `get`, `set`, `list`, `clear`, `help`")
-		return nil
+		return MessageSend(s, m, "Usage: !config <command> [args]\nAvailable commands: `get`, `set`, `list`, `clear`, `help`")
 	}
 
 	// Handle the config command
@@ -25,44 +24,36 @@ func Config(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) erro
 
 	case "get":
 		if len(args) < 2 {
-			MessageSend(s, m, "Usage: !config get <key>")
-			return nil
+			return MessageSend(s, m, "Usage: !config get <key>")
 		}
 		key := args[1]
 		value, exists := guild.GetConfigMap()[key]
 		if !exists {
-			MessageSend(s, m, fmt.Sprintf("Config key `%s` does not exist", key))
-			return nil
+			return MessageSend(s, m, fmt.Sprintf("Config key `%s` does not exist", key))
 		}
-		MessageSend(s, m, fmt.Sprintf("Config `%s`: %v", key, value))
-		return nil
+		return MessageSend(s, m, fmt.Sprintf("Config `%s`: %v", key, value))
 
 	case "set":
 		if len(args) < 3 {
-			MessageSend(s, m, "Usage: !config set <key> <value>")
-			return nil
+			return MessageSend(s, m, "Usage: !config set <key> <value>")
 		}
 		key := args[1]
 		values := strings.Split(strings.Join(args[2:], ","), ",")
 		if key == "" || len(values) == 0 {
-			MessageSend(s, m, "Key and value cannot be empty")
-			return nil
+			return MessageSend(s, m, "Key and value cannot be empty")
 		}
 		cmap := guild.GetConfigMap()
 		if _, ok := cmap[key]; !ok {
-			MessageSend(s, m, fmt.Sprintf("Key must exist and must be one of %v", config.ConfigKeys))
-			return nil
+			return MessageSend(s, m, fmt.Sprintf("Key must exist and must be one of %v", config.ConfigKeys))
 		}
 
 		// Special handling for prefix
 		if strings.TrimSpace(strings.ToLower(key)) == "prefix" {
 			if len(values) != 1 || len(values[0]) == 0 {
-				MessageSend(s, m, "Prefix must be a single non-empty string")
-				return nil
+				return MessageSend(s, m, "Prefix must be a single non-empty string")
 			}
 			guild.SetPrefix(strings.TrimSpace(values[0]))
-			MessageSend(s, m, fmt.Sprintf("Prefix set to `%s`", guild.Prefix()))
-			return nil
+			return MessageSend(s, m, fmt.Sprintf("Prefix set to `%s`", guild.Prefix()))
 		}
 
 		// Handle roles
@@ -76,19 +67,20 @@ func Config(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) erro
 			if role := guild.FindRole(v); role != nil {
 				newValues = append(newValues, role) // Use the role ID if a role is found
 			} else {
-				MessageSend(s, m, fmt.Sprintf("Could not find a role associated with %s", v))
+				if err := MessageSend(s, m, fmt.Sprintf("Could not find a role associated with %s", v)); err != nil {
+					log.Printf("Failed to send message: %v", err)
+					return err
+				}
 				continue
 			}
 		}
 
 		if err := guild.SetRoleConfig(key, newValues); err != nil {
 			log.Printf("Failed to set config for guild %q: %v", guild.Name, err)
-			MessageSend(s, m, "Failed to set config")
-			return err
+			return MessageSend(s, m, "Failed to set config")
 		}
 
-		MessageSend(s, m, fmt.Sprintf("Config `%s` set to `%s`", key, strings.Join(guild.RolesToNames(newValues), ", ")))
-		return nil
+		return MessageSend(s, m, fmt.Sprintf("Config `%s` set to `%s`", key, strings.Join(guild.RolesToNames(newValues), ", ")))
 
 	case "list":
 		var response string
@@ -111,44 +103,40 @@ func Config(cmd *Command, s *discordgo.Session, m *discordgo.MessageCreate) erro
 			}
 		}
 
-		MessageSend(s, m, response)
-		return nil
+		return MessageSend(s, m, response)
 
 	case "clear":
 		if len(args) < 2 {
-			MessageSend(s, m, "Usage: !config clear <key>")
-			return nil
+			return MessageSend(s, m, "Usage: !config clear <key>")
 		}
 		key := args[1]
 		if _, exists := guild.GetConfigMap()[key]; !exists {
-			MessageSend(s, m, fmt.Sprintf("Config key `%s` does not exist", key))
-			return nil
+			return MessageSend(s, m, fmt.Sprintf("Config key `%s` does not exist", key))
 		}
 		if key == "prefix" {
-			MessageSend(s, m, "You cannot clear the `prefix` key")
-			return nil
+			return MessageSend(s, m, "You cannot clear the `prefix` key")
 		}
 		if err := guild.ClearConfig(key); err != nil {
 			log.Printf("Failed to clear config for guild %q: %v", guild.Name, err)
-			MessageSend(s, m, "Failed to clear config")
+			if merr := MessageSend(s, m, "Failed to clear config"); merr != nil {
+				log.Printf("Failed to send message: %v", merr)
+			}
 			return err
 		}
-		MessageSend(s, m, fmt.Sprintf("Config key `%s` cleared", key))
-		return nil
+		return MessageSend(s, m, fmt.Sprintf("Config key `%s` cleared", key))
 
 	default:
 		keys := make([]string, 0, len(config.ConfigKeys))
 		for _, key := range config.ConfigKeys {
 			keys = append(keys, fmt.Sprintf("`%s`", strings.TrimSpace(key)))
 		}
-		MessageSend(s, m, "Config Command Help:\n"+
+		return MessageSend(s, m, "Config Command Help:\n"+
 			"`!config get <key>` - Retrieves the value of a config key\n"+
 			"`!config set <key> <value>` - Sets a config key to a value\n"+
 			"`!config list` - Lists all config keys and their values\n"+
 			"`!config clear <key>` - Clears a config key\n"+
 			"`!config help` - Displays this help message"+
 			"\n\nAvailable config keys: "+strings.Join(keys, ", "))
-		return nil
 	}
 }
 
